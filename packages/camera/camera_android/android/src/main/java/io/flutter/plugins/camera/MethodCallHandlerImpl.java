@@ -6,8 +6,10 @@ package io.flutter.plugins.camera;
 
 import android.app.Activity;
 import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CameraDevice;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import io.flutter.embedding.engine.systemchannels.PlatformChannel;
@@ -28,6 +30,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 final class MethodCallHandlerImpl implements MethodChannel.MethodCallHandler {
+  private static final String TAG = "CameraChannel";
+
   private final Activity activity;
   private final BinaryMessenger messenger;
   private final CameraPermissions cameraPermissions;
@@ -66,9 +70,14 @@ final class MethodCallHandlerImpl implements MethodChannel.MethodCallHandler {
         }
         break;
       case "create":
+        Log.i(TAG, "onMethodCall: create");
         {
           if (camera != null) {
-            camera.close();
+            Log.w(TAG, "onMethodCall: create - Invocation on an already created camera.");
+            // The original camera plugin tried to be idempotent, by closing and recreating,
+            // but that lead to a myriad of state-handling issues between Flutter and Java.
+            result.error("CameraAccess", "Camera already created", null);
+            break;
           }
 
           cameraPermissions.requestPermissions(
@@ -89,6 +98,7 @@ final class MethodCallHandlerImpl implements MethodChannel.MethodCallHandler {
           break;
         }
       case "initialize":
+        Log.i(TAG, "onMethodCall: initialize");
         {
           if (camera != null) {
             try {
@@ -352,9 +362,16 @@ final class MethodCallHandlerImpl implements MethodChannel.MethodCallHandler {
           break;
         }
       case "dispose":
+        Log.i(TAG, "onMethodCall: dispose");
         {
-          if (camera != null) {
-            camera.dispose();
+          final Camera oldCamera = camera;
+          camera = null;
+
+          if (oldCamera != null) {
+            oldCamera.dispose();
+          } else {
+            // TODO(tiloc): Should dispose be idempotent or not?
+            Log.w(TAG, "onMethodCall: dispose on an already disposed camera.");
           }
           result.success(null);
           break;
