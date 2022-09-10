@@ -76,7 +76,7 @@ final class MethodCallHandlerImpl implements MethodChannel.MethodCallHandler {
             Log.w(TAG, "onMethodCall: create - Invocation on an already created camera.");
             // The original camera plugin tried to be idempotent, by closing and recreating,
             // but that lead to a myriad of state-handling issues between Flutter and Java.
-            result.error("CameraAccess", "Camera already created", null);
+            result.error("CameraAlreadyCreated", "Camera already created", null);
             break;
           }
 
